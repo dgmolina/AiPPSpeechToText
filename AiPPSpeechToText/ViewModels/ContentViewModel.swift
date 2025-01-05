@@ -10,6 +10,7 @@ import AVFoundation
 
 class ContentViewModel: NSObject, ObservableObject {
     @Published var transcriptionResult: TranscriptionResult?
+    @Published var isRecordingEnabled: Bool = false // Tracks if recording is allowed
     private let transcriptionAgent: TranscriptionAgent
     private let textCleaningAgent: TextCleaningAgent
     private var audioRecorder: AVAudioRecorder?
@@ -18,14 +19,14 @@ class ContentViewModel: NSObject, ObservableObject {
     private var audioFileOutput: AVCaptureMovieFileOutput?
     private var fileURL: URL?
     private let recordingDelegate = AudioRecordingDelegate()
-    private let outputDelegate = AudioOutputDelegate() // Retain the delegate
+    private let outputDelegate = AudioOutputDelegate()
+
     init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
         super.init()
         print("ContentViewModel initialized")
-        requestMicrophonePermission()
-        setupAudioCapture()
+        requestMicrophonePermission() // Request permissions on initialization
     }
     
     deinit {
@@ -42,22 +43,27 @@ class ContentViewModel: NSObject, ObservableObject {
         print("Requesting microphone permission...")
         DispatchQueue.main.async {
             if AVCaptureDevice.default(for: .audio) != nil {
-                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+                    guard let self = self else { return }
                     if granted {
                         print("Microphone access granted")
+                        self.setupAudioCapture() // Only set up audio capture if permissions are granted
+                        self.isRecordingEnabled = true // Enable recording buttons
                     } else {
                         print("Microphone access denied")
+                        self.isRecordingEnabled = false // Disable recording buttons
                     }
                 }
             } else {
                 print("Microphone is not available")
+                self.isRecordingEnabled = false // Disable recording buttons
             }
         }
     }
 
     func startRecording() {
-        guard let captureSession = captureSession, !captureSession.isRunning else {
-            print("Capture session is not setup or already running")
+        guard isRecordingEnabled, let captureSession = captureSession, !captureSession.isRunning else {
+            print("Recording is not enabled or capture session is already running")
             return
         }
         
@@ -70,8 +76,8 @@ class ContentViewModel: NSObject, ObservableObject {
     }
 
     func stopRecording() async {
-        guard let captureSession = captureSession, captureSession.isRunning else {
-            print("Capture session is not running")
+        guard isRecordingEnabled, let captureSession = captureSession, captureSession.isRunning else {
+            print("Recording is not enabled or capture session is not running")
             return
         }
 

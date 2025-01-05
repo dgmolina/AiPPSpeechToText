@@ -41,10 +41,12 @@ struct ContentView: View {
                 }) {
                     Text("Start Recording")
                         .padding()
-                        .background(Color.blue)
+                        .background(viewModel.isRecordingEnabled ? Color.blue : Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
+                .disabled(!viewModel.isRecordingEnabled) // Disable button if permissions are not granted
+
                 Button(action: {
                     Task {
                         await viewModel.stopRecording()
@@ -52,10 +54,11 @@ struct ContentView: View {
                 }) {
                     Text("Stop Recording")
                         .padding()
-                        .background(Color.red)
+                        .background(viewModel.isRecordingEnabled ? Color.red : Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
+                .disabled(!viewModel.isRecordingEnabled) // Disable button if permissions are not granted
             }
             .padding()
         }
