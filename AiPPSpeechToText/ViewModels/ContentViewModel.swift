@@ -8,7 +8,7 @@
 import Foundation
 import AVFoundation
 
-class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate & AVCaptureFileOutputDelegate {
+class ContentViewModel: NSObject, ObservableObject {
     @Published var transcriptionResult: TranscriptionResult?
     private let transcriptionAgent: TranscriptionAgent
     private let textCleaningAgent: TextCleaningAgent
@@ -17,6 +17,8 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
     private var audioInput: AVCaptureDeviceInput?
     private var audioFileOutput: AVCaptureMovieFileOutput?
     private var fileURL: URL?
+    private let recordingDelegate = AudioRecordingDelegate()
+    private let outputDelegate = AudioOutputDelegate()
     init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
@@ -33,7 +35,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
         fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
         
         if let fileURL = fileURL {
-            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: self)
+            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: recordingDelegate)
             captureSession.startRunning()
         }
     }
@@ -82,8 +84,8 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
             
             audioFileOutput = AVCaptureMovieFileOutput()
             if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
-                audioFileOutput.movieFragmentInterval = .invalid // For continuous recording
-                audioFileOutput.delegate = self
+                audioFileOutput.movieFragmentInterval = .invalid
+                audioFileOutput.delegate = outputDelegate
                 captureSession!.addOutput(audioFileOutput)
             } else {
                 print("Could not add audio output to capture session")
@@ -95,34 +97,4 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
         }
     }
     
-    // MARK: - AVCaptureFileOutputDelegate methods
-    
-    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Started recording to: \(fileURL)")
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, didPauseRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Paused recording to: \(fileURL)")
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, didResumeRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Resumed recording to: \(fileURL)")
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, willFinishRecordingTo fileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
-        if let error = error {
-            print("Will finish recording with error: \(error.localizedDescription)")
-        }
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, 
-                   didFinishRecordingTo outputFileURL: URL, 
-                   from connections: [AVCaptureConnection], 
-                   error: Error?) {
-        if let error = error {
-            print("Recording finished with error: \(error.localizedDescription)")
-            return
-        }
-        print("Successfully finished recording to: \(outputFileURL)")
-    }
 }
