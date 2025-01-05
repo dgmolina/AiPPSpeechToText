@@ -18,6 +18,7 @@ class ContentViewModel: NSObject, ObservableObject {
     private var audioFileOutput: AVCaptureMovieFileOutput?
     private var fileURL: URL?
     private let recordingDelegate = AudioRecordingDelegate()
+    private let outputDelegate = AudioOutputDelegate() // Retain the delegate
     private let outputDelegate = AudioOutputDelegate()
     init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
@@ -45,10 +46,12 @@ class ContentViewModel: NSObject, ObservableObject {
             print("Capture session is not running")
             return
         }
-        
-        audioFileOutput?.stopRecording()
-        captureSession.stopRunning()
-        
+
+        DispatchQueue.main.async {
+            self.audioFileOutput?.stopRecording()
+            captureSession.stopRunning()
+        }
+
         guard let fileURL = fileURL else {
             print("Error: No audio URL found")
             return
@@ -67,33 +70,34 @@ class ContentViewModel: NSObject, ObservableObject {
     }
 
     private func setupAudioCapture() {
-        captureSession = AVCaptureSession()
-        guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
-            print("Could not get default audio device")
-            return
-        }
+        DispatchQueue.main.async {
+            self.captureSession = AVCaptureSession()
+            guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
+                print("Could not get default audio device")
+                return
+            }
 
-        do {
-            audioInput = try AVCaptureDeviceInput(device: audioDevice)
-            if let audioInput = audioInput, captureSession!.canAddInput(audioInput) {
-                captureSession!.addInput(audioInput)
-            } else {
-                print("Could not add audio input to capture session")
-                return
+            do {
+                self.audioInput = try AVCaptureDeviceInput(device: audioDevice)
+                if let audioInput = self.audioInput, self.captureSession!.canAddInput(audioInput) {
+                    self.captureSession!.addInput(audioInput)
+                } else {
+                    print("Could not add audio input to capture session")
+                    return
+                }
+
+                self.audioFileOutput = AVCaptureMovieFileOutput()
+                if let audioFileOutput = self.audioFileOutput, self.captureSession!.canAddOutput(audioFileOutput) {
+                    audioFileOutput.movieFragmentInterval = .invalid
+                    audioFileOutput.delegate = self.outputDelegate
+                    self.captureSession!.addOutput(audioFileOutput)
+                } else {
+                    print("Could not add audio output to capture session")
+                    return
+                }
+            } catch {
+                print("Error setting up audio capture: \(error)")
             }
-            
-            audioFileOutput = AVCaptureMovieFileOutput()
-            if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
-                audioFileOutput.movieFragmentInterval = .invalid
-                audioFileOutput.delegate = outputDelegate
-                captureSession!.addOutput(audioFileOutput)
-            } else {
-                print("Could not add audio output to capture session")
-                return
-            }
-            
-        } catch {
-            print("Error setting up audio capture: \(error)")
         }
     }
     
