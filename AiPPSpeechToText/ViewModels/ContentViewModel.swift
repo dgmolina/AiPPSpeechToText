@@ -8,7 +8,7 @@
 import Foundation
 import AVFoundation
 
-class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate {
+class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate, AVCaptureFileOutputDelegate {
     @Published var transcriptionResult: TranscriptionResult?
     private let transcriptionAgent: TranscriptionAgent
     private let textCleaningAgent: TextCleaningAgent
@@ -17,12 +17,9 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
     private var audioInput: AVCaptureDeviceInput?
     private var audioFileOutput: AVCaptureMovieFileOutput?
     private var fileURL: URL?
-    private weak var recordingDelegate: AVCaptureFileOutputRecordingDelegate?
-
-    init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent, recordingDelegate: AVCaptureFileOutputRecordingDelegate) {
+    init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
-        self.recordingDelegate = recordingDelegate
         super.init()
         setupAudioCapture()
     }
@@ -36,7 +33,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
         fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
         
         if let fileURL = fileURL, let recordingDelegate = recordingDelegate {
-            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: recordingDelegate)
+            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: self)
             captureSession.startRunning()
         }
     }
@@ -86,7 +83,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
             audioFileOutput = AVCaptureMovieFileOutput()
             if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
                 audioFileOutput.movieFragmentInterval = .invalid // For continuous recording
-                audioFileOutput.delegate = self
+                audioFileOutput.delegate = self as AVCaptureFileOutputDelegate
                 captureSession!.addOutput(audioFileOutput)
             } else {
                 print("Could not add audio output to capture session")

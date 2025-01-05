@@ -16,12 +16,7 @@ struct ContentView: View {
         let textCleaningAgent = GeminiTextCleaningAgent(geminiService: geminiService)
         let viewModel = ContentViewModel(
             transcriptionAgent: transcriptionAgent,
-            textCleaningAgent: textCleaningAgent,
-            recordingDelegate: ContentViewModel(
-                transcriptionAgent: transcriptionAgent,
-                textCleaningAgent: textCleaningAgent,
-                recordingDelegate: nil
-            )
+            textCleaningAgent: textCleaningAgent
         )
         _viewModel = StateObject(wrappedValue: viewModel)
     }
