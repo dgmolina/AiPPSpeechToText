@@ -23,7 +23,18 @@ class ContentViewModel: NSObject, ObservableObject {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
         super.init()
+        requestMicrophonePermission() // Request microphone access
         setupAudioCapture()
+    }
+
+    private func requestMicrophonePermission() {
+        AVCaptureDevice.requestAccess(for: .audio) { granted in
+            if granted {
+                print("Microphone access granted")
+            } else {
+                print("Microphone access denied")
+            }
+        }
     }
 
     func startRecording() {
@@ -70,9 +81,27 @@ class ContentViewModel: NSObject, ObservableObject {
 
     private func setupAudioCapture() {
         DispatchQueue.main.async {
+            print("Setting up audio capture...")
             self.captureSession = AVCaptureSession()
             guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
                 print("Could not get default audio device")
+                return
+            }
+
+            print("Audio device found: \(audioDevice.localizedName)")
+
+            // Check if the audio device is available
+            do {
+                try audioDevice.lockForConfiguration()
+                if audioDevice.isConnected && !audioDevice.isSuspended {
+                    print("Audio device is available and connected")
+                } else {
+                    print("Audio device is unavailable or suspended")
+                    return
+                }
+                audioDevice.unlockForConfiguration()
+            } catch {
+                print("Error checking audio device availability: \(error)")
                 return
             }
 
@@ -80,6 +109,7 @@ class ContentViewModel: NSObject, ObservableObject {
                 self.audioInput = try AVCaptureDeviceInput(device: audioDevice)
                 if let audioInput = self.audioInput, self.captureSession!.canAddInput(audioInput) {
                     self.captureSession!.addInput(audioInput)
+                    print("Audio input added to capture session")
                 } else {
                     print("Could not add audio input to capture session")
                     return
@@ -90,6 +120,7 @@ class ContentViewModel: NSObject, ObservableObject {
                     audioFileOutput.movieFragmentInterval = .invalid
                     audioFileOutput.delegate = self.outputDelegate
                     self.captureSession!.addOutput(audioFileOutput)
+                    print("Audio output added to capture session")
                 } else {
                     print("Could not add audio output to capture session")
                     return
