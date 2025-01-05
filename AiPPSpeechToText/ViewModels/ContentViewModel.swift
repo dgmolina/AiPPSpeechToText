@@ -23,8 +23,19 @@ class ContentViewModel: NSObject, ObservableObject {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
         super.init()
-        requestMicrophonePermission() // Request microphone access
+        print("ContentViewModel initialized")
+        requestMicrophonePermission()
         setupAudioCapture()
+    }
+    
+    deinit {
+        if let captureSession = captureSession, captureSession.isRunning {
+            captureSession.stopRunning()
+        }
+        audioFileOutput = nil
+        audioInput = nil
+        captureSession = nil
+        print("ContentViewModel deinitialized")
     }
 
     private func requestMicrophonePermission() {
@@ -57,9 +68,11 @@ class ContentViewModel: NSObject, ObservableObject {
             return
         }
 
-        DispatchQueue.main.async {
+        // Stop recording on main thread
+        await MainActor.run {
             self.audioFileOutput?.stopRecording()
             captureSession.stopRunning()
+            print("Recording stopped and capture session ended")
         }
 
         guard let fileURL = fileURL else {
@@ -68,14 +81,22 @@ class ContentViewModel: NSObject, ObservableObject {
         }
 
         do {
+            print("Processing audio data...")
             let audioData = try Data(contentsOf: fileURL)
             let transcribedText = try await transcriptionAgent.transcribe(audioData: audioData)
+            print("Transcription complete, cleaning text...")
             let cleanedText = try await textCleaningAgent.cleanText(text: transcribedText)
-            DispatchQueue.main.async {
+            
+            // Update UI on main thread
+            await MainActor.run {
                 self.transcriptionResult = TranscriptionResult(originalText: transcribedText, cleanedText: cleanedText)
+                print("Transcription result updated")
             }
         } catch {
             print("Error processing audio: \(error)")
+            await MainActor.run {
+                self.transcriptionResult = nil
+            }
         }
     }
 
