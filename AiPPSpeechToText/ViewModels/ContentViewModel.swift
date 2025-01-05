@@ -61,61 +61,9 @@ class ContentViewModel: NSObject, ObservableObject {
         }
     }
 
-    func startRecording() {
-        guard isRecordingEnabled, let captureSession = captureSession, !captureSession.isRunning else {
-            print("Recording is not enabled or capture session is already running")
-            return
-        }
-        
-        fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
-        
-        if let fileURL = fileURL {
-            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: recordingDelegate)
-            captureSession.startRunning()
-        }
-    }
-
-    func stopRecording() async {
-        guard isRecordingEnabled, let captureSession = captureSession, captureSession.isRunning else {
-            print("Recording is not enabled or capture session is not running")
-            return
-        }
-
-        // Stop recording on main thread
-        await MainActor.run {
-            self.audioFileOutput?.stopRecording()
-            captureSession.stopRunning()
-            print("Recording stopped and capture session ended")
-        }
-
-        guard let fileURL = fileURL else {
-            print("Error: No audio URL found")
-            return
-        }
-
-        do {
-            print("Processing audio data...")
-            let audioData = try Data(contentsOf: fileURL)
-            let transcribedText = try await transcriptionAgent.transcribe(audioData: audioData)
-            print("Transcription complete, cleaning text...")
-            let cleanedText = try await textCleaningAgent.cleanText(text: transcribedText)
-            
-            // Update UI on main thread
-            await MainActor.run {
-                self.transcriptionResult = TranscriptionResult(originalText: transcribedText, cleanedText: cleanedText)
-                print("Transcription result updated")
-            }
-        } catch {
-            print("Error processing audio: \(error)")
-            await MainActor.run {
-                self.transcriptionResult = nil
-            }
-        }
-    }
-
     private func setupAudioCapture() {
+        print("Setting up audio capture...")
         DispatchQueue.main.async {
-            print("Setting up audio capture...")
             self.captureSession = AVCaptureSession()
             guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
                 print("Could not get default audio device")
@@ -123,21 +71,6 @@ class ContentViewModel: NSObject, ObservableObject {
             }
 
             print("Audio device found: \(audioDevice.localizedName)")
-
-            // Check if the audio device is available
-            do {
-                try audioDevice.lockForConfiguration()
-                if audioDevice.isConnected && !audioDevice.isSuspended {
-                    print("Audio device is available and connected")
-                } else {
-                    print("Audio device is unavailable or suspended")
-                    return
-                }
-                audioDevice.unlockForConfiguration()
-            } catch {
-                print("Error checking audio device availability: \(error)")
-                return
-            }
 
             do {
                 self.audioInput = try AVCaptureDeviceInput(device: audioDevice)
@@ -161,6 +94,56 @@ class ContentViewModel: NSObject, ObservableObject {
                 }
             } catch {
                 print("Error setting up audio capture: \(error)")
+            }
+        }
+    }
+
+    func startRecording() {
+        guard isRecordingEnabled, let captureSession = captureSession, !captureSession.isRunning else {
+            print("Recording is not enabled or capture session is already running")
+            return
+        }
+
+        fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
+
+        if let fileURL = fileURL {
+            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: recordingDelegate)
+            captureSession.startRunning()
+        }
+    }
+
+    func stopRecording() async {
+        guard isRecordingEnabled, let captureSession = captureSession, captureSession.isRunning else {
+            print("Recording is not enabled or capture session is not running")
+            return
+        }
+
+        await MainActor.run {
+            self.audioFileOutput?.stopRecording()
+            captureSession.stopRunning()
+            print("Recording stopped and capture session ended")
+        }
+
+        guard let fileURL = fileURL else {
+            print("Error: No audio URL found")
+            return
+        }
+
+        do {
+            print("Processing audio data...")
+            let audioData = try Data(contentsOf: fileURL)
+            let transcribedText = try await transcriptionAgent.transcribe(audioData: audioData)
+            print("Transcription complete, cleaning text...")
+            let cleanedText = try await textCleaningAgent.cleanText(text: transcribedText)
+
+            await MainActor.run {
+                self.transcriptionResult = TranscriptionResult(originalText: transcribedText, cleanedText: cleanedText)
+                print("Transcription result updated")
+            }
+        } catch {
+            print("Error processing audio: \(error)")
+            await MainActor.run {
+                self.transcriptionResult = nil
             }
         }
     }
