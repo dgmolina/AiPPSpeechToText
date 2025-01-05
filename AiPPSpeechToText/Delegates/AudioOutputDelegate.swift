@@ -1,21 +1,18 @@
 import AVFoundation
+import CoreMedia
 
 class AudioOutputDelegate: NSObject, AVCaptureFileOutputDelegate {
-    func fileOutput(_ output: AVCaptureFileOutput, didStartRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Started recording to: \(fileURL)")
+
+    // Required method
+    func fileOutputShouldProvideSampleAccurateRecordingStart(_ output: AVCaptureFileOutput) -> Bool {
+        // Return true to enable sample-accurate recording start
+        return true
     }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, didPauseRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Paused recording to: \(fileURL)")
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, didResumeRecordingTo fileURL: URL, from connections: [AVCaptureConnection]) {
-        print("Resumed recording to: \(fileURL)")
-    }
-    
-    func fileOutput(_ output: AVCaptureFileOutput, willFinishRecordingTo fileURL: URL, from connections: [AVCaptureConnection], error: Error?) {
-        if let error = error {
-            print("Will finish recording with error: \(error.localizedDescription)")
-        }
+
+    // Optional method
+    func fileOutput(_ output: AVCaptureFileOutput, didOutputSampleBuffer sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        // Implement this method if you need to process each sample buffer
+        // For example, you can log the sample buffer or perform additional processing
+        // print("Received sample buffer")
     }
 }
