@@ -32,7 +32,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
         
         fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
         
-        if let fileURL = fileURL, let recordingDelegate = recordingDelegate {
+        if let fileURL = fileURL {
             audioFileOutput?.startRecording(to: fileURL, recordingDelegate: self)
             captureSession.startRunning()
         }
