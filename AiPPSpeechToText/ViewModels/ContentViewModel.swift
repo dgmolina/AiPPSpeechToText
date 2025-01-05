@@ -13,40 +13,47 @@ class ContentViewModel: ObservableObject {
     private let transcriptionAgent: TranscriptionAgent
     private let textCleaningAgent: TextCleaningAgent
     private var audioRecorder: AVAudioRecorder?
-    private var audioSession: AVAudioSession?
+    private var captureSession: AVCaptureSession?
+    private var audioInput: AVCaptureDeviceInput?
+    private var audioFileOutput: AVCaptureMovieFileOutput?
+    private var fileURL: URL?
 
     init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
-        setupAudioSession()
+        setupAudioCapture()
     }
 
     func startRecording() {
-        let fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.m4a")
-        let settings = [
-            AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
-            AVSampleRateKey: 44100,
-            AVNumberOfChannelsKey: 1,
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
-        ]
-
-        do {
-            audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
-            audioRecorder?.record()
-        } catch {
-            print("Error starting recording: \(error)")
+        guard let captureSession = captureSession, !captureSession.isRunning else {
+            print("Capture session is not setup or already running")
+            return
+        }
+        
+        fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
+        
+        if let fileURL = fileURL {
+            audioFileOutput?.startRecording(to: fileURL)
+            captureSession.startRunning()
         }
     }
 
     func stopRecording() async {
-        audioRecorder?.stop()
-        guard let audioURL = audioRecorder?.url else {
+        guard let captureSession = captureSession, captureSession.isRunning else {
+            print("Capture session is not running")
+            return
+        }
+        
+        audioFileOutput?.stopRecording()
+        captureSession.stopRunning()
+        
+        guard let fileURL = fileURL else {
             print("Error: No audio URL found")
             return
         }
 
         do {
-            let audioData = try Data(contentsOf: audioURL)
+            let audioData = try Data(contentsOf: fileURL)
             let transcribedText = try await transcriptionAgent.transcribe(audioData: audioData)
             let cleanedText = try await textCleaningAgent.cleanText(text: transcribedText)
             DispatchQueue.main.async {
@@ -57,20 +64,32 @@ class ContentViewModel: ObservableObject {
         }
     }
 
-    private func setupAudioSession() {
-        audioSession = AVAudioSession.sharedInstance()
+    private func setupAudioCapture() {
+        captureSession = AVCaptureSession()
+        guard let audioDevice = AVCaptureDevice.default(for: .audio) else {
+            print("Could not get default audio device")
+            return
+        }
+
         do {
-            try audioSession?.setCategory(.record, mode: .default, options: [])
-            try audioSession?.setActive(true)
-            audioSession?.requestRecordPermission { granted in
-                if granted {
-                    print("Audio permission granted")
-                } else {
-                    print("Audio permission denied")
-                }
+            audioInput = try AVCaptureDeviceInput(device: audioDevice)
+            if let audioInput = audioInput, captureSession!.canAddInput(audioInput) {
+                captureSession!.addInput(audioInput)
+            } else {
+                print("Could not add audio input to capture session")
+                return
             }
+            
+            audioFileOutput = AVCaptureMovieFileOutput()
+            if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
+                captureSession!.addOutput(audioFileOutput)
+            } else {
+                print("Could not add audio output to capture session")
+                return
+            }
+            
         } catch {
-            print("Error setting up audio session: \(error)")
+            print("Error setting up audio capture: \(error)")
         }
     }
 }
