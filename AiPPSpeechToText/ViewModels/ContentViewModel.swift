@@ -39,11 +39,18 @@ class ContentViewModel: NSObject, ObservableObject {
     }
 
     private func requestMicrophonePermission() {
-        AVCaptureDevice.requestAccess(for: .audio) { granted in
-            if granted {
-                print("Microphone access granted")
+        print("Requesting microphone permission...")
+        DispatchQueue.main.async {
+            if AVCaptureDevice.default(for: .audio) != nil {
+                AVCaptureDevice.requestAccess(for: .audio) { granted in
+                    if granted {
+                        print("Microphone access granted")
+                    } else {
+                        print("Microphone access denied")
+                    }
+                }
             } else {
-                print("Microphone access denied")
+                print("Microphone is not available")
             }
         }
     }
