@@ -8,7 +8,7 @@
 import Foundation
 import AVFoundation
 
-class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate, AVCaptureFileOutputDelegate {
+class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecordingDelegate & AVCaptureFileOutputDelegate {
     @Published var transcriptionResult: TranscriptionResult?
     private let transcriptionAgent: TranscriptionAgent
     private let textCleaningAgent: TextCleaningAgent
@@ -83,7 +83,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
             audioFileOutput = AVCaptureMovieFileOutput()
             if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
                 audioFileOutput.movieFragmentInterval = .invalid // For continuous recording
-                audioFileOutput.delegate = self as AVCaptureFileOutputDelegate
+                audioFileOutput.delegate = self
                 captureSession!.addOutput(audioFileOutput)
             } else {
                 print("Could not add audio output to capture session")
