@@ -14,7 +14,16 @@ struct ContentView: View {
         let geminiService = GeminiService()
         let transcriptionAgent = GeminiTranscriptionAgent(geminiService: geminiService)
         let textCleaningAgent = GeminiTextCleaningAgent(geminiService: geminiService)
-        _viewModel = StateObject(wrappedValue: ContentViewModel(transcriptionAgent: transcriptionAgent, textCleaningAgent: textCleaningAgent))
+        let viewModel = ContentViewModel(
+            transcriptionAgent: transcriptionAgent,
+            textCleaningAgent: textCleaningAgent,
+            recordingDelegate: ContentViewModel(
+                transcriptionAgent: transcriptionAgent,
+                textCleaningAgent: textCleaningAgent,
+                recordingDelegate: nil
+            )
+        )
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     var body: some View {

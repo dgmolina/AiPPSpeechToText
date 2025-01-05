@@ -17,10 +17,13 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
     private var audioInput: AVCaptureDeviceInput?
     private var audioFileOutput: AVCaptureMovieFileOutput?
     private var fileURL: URL?
+    private weak var recordingDelegate: AVCaptureFileOutputRecordingDelegate?
 
-    init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
+    init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent, recordingDelegate: AVCaptureFileOutputRecordingDelegate) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
+        self.recordingDelegate = recordingDelegate
+        super.init()
         setupAudioCapture()
     }
 
@@ -32,8 +35,8 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
         
         fileURL = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("recording.mov")
         
-        if let fileURL = fileURL {
-            audioFileOutput?.startRecording(to: fileURL)
+        if let fileURL = fileURL, let recordingDelegate = recordingDelegate {
+            audioFileOutput?.startRecording(to: fileURL, recordingDelegate: recordingDelegate)
             captureSession.startRunning()
         }
     }
