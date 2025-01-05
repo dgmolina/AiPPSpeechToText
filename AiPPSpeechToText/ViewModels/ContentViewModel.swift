@@ -19,7 +19,6 @@ class ContentViewModel: NSObject, ObservableObject {
     private var fileURL: URL?
     private let recordingDelegate = AudioRecordingDelegate()
     private let outputDelegate = AudioOutputDelegate() // Retain the delegate
-    private let outputDelegate = AudioOutputDelegate()
     init(transcriptionAgent: TranscriptionAgent, textCleaningAgent: TextCleaningAgent) {
         self.transcriptionAgent = transcriptionAgent
         self.textCleaningAgent = textCleaningAgent
