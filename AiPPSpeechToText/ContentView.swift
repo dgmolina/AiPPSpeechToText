@@ -8,12 +8,33 @@
 import SwiftUI
 
 struct ContentView: View {
+    @StateObject private var viewModel: ContentViewModel
+
+    init() {
+        let geminiService = GeminiService()
+        let transcriptionAgent = GeminiTranscriptionAgent(geminiService: geminiService)
+        let textCleaningAgent = GeminiTextCleaningAgent(geminiService: geminiService)
+        _viewModel = StateObject(wrappedValue: ContentViewModel(transcriptionAgent: transcriptionAgent, textCleaningAgent: textCleaningAgent))
+    }
+
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+            if let result = viewModel.transcriptionResult {
+                Text("Original: \(result.originalText)")
+                Text("Cleaned: \(result.cleanedText)")
+            } else {
+                Text("Press the button to start recording")
+            }
+            HStack {
+                Button("Start Recording") {
+                    viewModel.startRecording()
+                }
+                Button("Stop Recording") {
+                    Task {
+                        await viewModel.stopRecording()
+                    }
+                }
+            }
         }
         .padding()
     }
