@@ -86,7 +86,7 @@ class ContentViewModel: NSObject, ObservableObject, AVCaptureFileOutputRecording
             audioFileOutput = AVCaptureMovieFileOutput()
             if let audioFileOutput = audioFileOutput, captureSession!.canAddOutput(audioFileOutput) {
                 audioFileOutput.movieFragmentInterval = .invalid // For continuous recording
-                audioFileOutput.setDelegate(self, queue: DispatchQueue.main)
+                audioFileOutput.delegate = self
                 captureSession!.addOutput(audioFileOutput)
             } else {
                 print("Could not add audio output to capture session")
